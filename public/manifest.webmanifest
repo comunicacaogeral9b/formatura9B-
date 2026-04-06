@@ -1,0 +1,17 @@
+{
+  "name": "Formatura 9°B",
+  "short_name": "Formatura 9B",
+  "description": "Portal da turma do 9°B para a formatura.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eff6ff",
+  "theme_color": "#1e293b",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2997/2997314.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
