@@ -1,11 +1,29 @@
-<div align="center">
+# Formatura 9°B - Portal da Turma
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Este é o portal oficial da formatura do 9°B. Aqui você encontrará informações sobre eventos, financeiro, avisos e a loja da turma.
 
-  <h1>Built with AI Studio</h2>
+## Como acessar
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- **Código da Turma:** `TURMA9B` (Acesso de visualização para todos os alunos)
+- **Código do ADM:** `ADM9B` (Acesso total para o representante/administrador)
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Tecnologias utilizadas
 
-</div>
+- React
+- TypeScript
+- Tailwind CSS
+- Lucide React (Ícones)
+- Framer Motion (Animações)
+
+## Como rodar localmente
+
+1. Clone o repositório
+2. Instale as dependências: `npm install`
+3. Inicie o servidor de desenvolvimento: `npm run dev`
+4. Para gerar a versão de produção: `npm run build`
+
+## Deploy no Netlify
+
+Para fazer o deploy no Netlify:
+- **Build Command:** `npm run build`
+- **Publish Directory:** `dist`
