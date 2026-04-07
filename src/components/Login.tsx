@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useGraduation } from '../context/GraduationContext';
-import { JellyfishIcon } from './JellyfishIcon';
 import { Key, ArrowRight, User as UserIcon } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -39,17 +38,14 @@ export const Login: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 flex flex-col items-center border border-slate-100"
       >
-        <div className="mb-8 relative">
-          <div className="bg-[#004d4d] p-1 rounded-[2.5rem] shadow-lg shadow-emerald-900/20 overflow-hidden w-24 h-24 flex items-center justify-center border-4 border-white">
+        <div className="mb-8">
+          <div className="bg-slate-100 p-1 rounded-[2.5rem] shadow-lg shadow-slate-200 overflow-hidden w-24 h-24 flex items-center justify-center border-4 border-white">
             <img 
               src="https://i.ibb.co/9HWjWXMH/1775578752644.jpg" 
               alt="Logo Formatura"
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
-          </div>
-          <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-full shadow-md border-2 border-white">
-            <JellyfishIcon className="w-4 h-4" />
           </div>
         </div>
 
