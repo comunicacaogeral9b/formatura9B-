@@ -13,9 +13,10 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ setTab }) => {
-  const { user, finance, events, notices, addNotice, deleteNotice, hasNotifications, clearNotifications } = useGraduation();
+  const { user, finance, events, notices, addNotice, deleteNotice, notifications, clearNotifications } = useGraduation();
   const [newNoticeText, setNewNoticeText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleShare = () => {
     const shareUrl = window.location.origin.includes('ais-dev') 
@@ -58,9 +59,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ setTab }) => {
   return (
     <div className="min-h-screen bg-slate-50 pb-24 p-6">
       <header className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-slate-500 text-sm font-medium">Olá, {user?.name || 'Visitante'} 👋</h2>
-          <h1 className="text-2xl font-bold text-slate-900">Portal da Formatura</h1>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg border-2 border-white">
+            <img 
+              src="https://i.ibb.co/9HWjWXMH/1775578752644.jpg" 
+              alt="Logo Turma"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <h2 className="text-slate-500 text-sm font-medium">Olá, {user?.name || 'Visitante'} 👋</h2>
+            <h1 className="text-2xl font-bold text-slate-900">Portal da Formatura</h1>
+          </div>
         </div>
         <div className="flex gap-2">
           <button
@@ -70,16 +81,101 @@ export const Dashboard: React.FC<DashboardProps> = ({ setTab }) => {
             {copied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
           </button>
           <button 
-            onClick={clearNotifications}
+            onClick={() => setShowNotifications(true)}
             className="bg-white p-3 rounded-2xl shadow-sm text-slate-400 hover:text-blue-600 transition-all relative"
           >
             <Bell className="w-6 h-6" />
-            {hasNotifications && (
+            {notifications.length > 0 && (
               <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 border-2 border-white rounded-full" />
             )}
           </button>
         </div>
       </header>
+
+      {/* Notifications Modal */}
+      <AnimatePresence>
+        {showNotifications && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowNotifications(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-slate-800 font-bold text-lg">Notificações</h3>
+                </div>
+                <button 
+                  onClick={() => setShowNotifications(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {notifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                      <Bell className="w-8 h-8" />
+                    </div>
+                    <p className="text-slate-400 text-sm">Nenhuma novidade por enquanto.</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div key={notif.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-1 p-2 rounded-lg ${
+                          notif.type === 'event' ? 'bg-blue-100 text-blue-600' :
+                          notif.type === 'notice' ? 'bg-amber-100 text-amber-600' :
+                          'bg-green-100 text-green-600'
+                        }`}>
+                          {notif.type === 'event' ? <Calendar className="w-4 h-4" /> :
+                           notif.type === 'notice' ? <Info className="w-4 h-4" /> :
+                           <TrendingUp className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold text-slate-800">{notif.title}</h4>
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed">{notif.message}</p>
+                          <span className="text-[10px] text-slate-400 mt-2 block uppercase font-medium">
+                            {formatTimeAgo(notif.date)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {notifications.length > 0 && (
+                <div className="p-6 bg-slate-50/50 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      clearNotifications();
+                      setShowNotifications(false);
+                    }}
+                    className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 rounded-2xl shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-5 h-5" />
+                    Marcar todas como lidas
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="space-y-6">
         {/* Balance Card - Dark Green */}

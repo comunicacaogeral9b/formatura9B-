@@ -39,8 +39,18 @@ export const Login: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 flex flex-col items-center border border-slate-100"
       >
-        <div className="bg-[#004d4d] p-5 rounded-3xl mb-8 shadow-lg shadow-emerald-900/20">
-          <JellyfishIcon className="w-12 h-12 text-emerald-100" />
+        <div className="mb-8 relative">
+          <div className="bg-[#004d4d] p-1 rounded-[2.5rem] shadow-lg shadow-emerald-900/20 overflow-hidden w-24 h-24 flex items-center justify-center border-4 border-white">
+            <img 
+              src="https://i.ibb.co/9HWjWXMH/1775578752644.jpg" 
+              alt="Logo Formatura"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-full shadow-md border-2 border-white">
+            <JellyfishIcon className="w-4 h-4" />
+          </div>
         </div>
 
         <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Portal 9°B</h1>

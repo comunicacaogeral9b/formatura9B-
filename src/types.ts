@@ -45,3 +45,11 @@ export interface DailyRecord {
   salesAmount: number;
   observation?: string;
 }
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  type: 'event' | 'notice' | 'finance';
+}

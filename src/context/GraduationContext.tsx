@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { User, Event, Product, FinanceData, DailyRecord, Notice } from '../types';
+import { User, Event, Product, FinanceData, DailyRecord, Notice, Notification } from '../types';
 
 interface GraduationContextType {
   user: User | null;
@@ -27,7 +27,7 @@ interface GraduationContextType {
   finance: FinanceData;
   studentContributions: number;
   updateStudentContributions: (amount: number) => void;
-  hasNotifications: boolean;
+  notifications: Notification[];
   clearNotifications: () => void;
 }
 
@@ -52,7 +52,20 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     { id: '2', text: 'Novos produtos disponíveis na loja da turma!', date: new Date(Date.now() - 86400000).toISOString() },
   ]);
   const [studentContributions, setStudentContributions] = useState<number>(1500.00);
-  const [hasNotifications, setHasNotifications] = useState<boolean>(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const addNotification = (title: string, message: string, type: Notification['type']) => {
+    setNotifications(prev => [
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        title,
+        message,
+        date: new Date().toISOString(),
+        type
+      },
+      ...prev
+    ]);
+  };
 
   const login = (code: string, name: string) => {
     const normalizedCode = code.toUpperCase().trim();
@@ -69,18 +82,25 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const logout = () => setUser(null);
 
   const addEvent = (event: Omit<Event, 'id'>) => {
-    setEvents(prev => [...prev, { ...event, id: Math.random().toString(36).substr(2, 9) }]);
-    setHasNotifications(true);
+    const newEvent = { ...event, id: Math.random().toString(36).substr(2, 9) };
+    setEvents(prev => [...prev, newEvent]);
+    addNotification('Novo Evento', `O evento "${event.name}" foi adicionado.`, 'event');
   };
 
   const updateEvent = (id: string, updatedEvent: Partial<Event>) => {
     setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updatedEvent } : e));
-    setHasNotifications(true);
+    const event = events.find(e => e.id === id);
+    if (event) {
+      addNotification('Evento Atualizado', `O evento "${event.name}" foi modificado.`, 'event');
+    }
   };
 
   const deleteEvent = (id: string) => {
+    const event = events.find(e => e.id === id);
     setEvents(prev => prev.filter(e => e.id !== id));
-    setHasNotifications(true);
+    if (event) {
+      addNotification('Evento Removido', `O evento "${event.name}" foi cancelado/removido.`, 'event');
+    }
   };
 
   const addProduct = (product: Omit<Product, 'id'>) => {
@@ -97,17 +117,18 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const addDailyRecord = (record: Omit<DailyRecord, 'id'>) => {
     setDailyRecords(prev => [...prev, { ...record, id: Math.random().toString(36).substr(2, 9) }]);
-    setHasNotifications(true);
+    if (record.salesAmount > 0) {
+      addNotification('Nova Venda', `Uma nova venda de R$ ${record.salesAmount.toLocaleString('pt-BR')} foi registrada.`, 'finance');
+    }
   };
 
   const deleteDailyRecord = (id: string) => {
     setDailyRecords(prev => prev.filter(r => r.id !== id));
-    setHasNotifications(true);
   };
 
   const addNotice = (text: string) => {
     setNotices(prev => [{ id: Math.random().toString(36).substr(2, 9), text, date: new Date().toISOString() }, ...prev]);
-    setHasNotifications(true);
+    addNotification('Novo Aviso', text, 'notice');
   };
 
   const deleteNotice = (id: string) => {
@@ -116,10 +137,10 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateStudentContributions = (amount: number) => {
     setStudentContributions(amount);
-    setHasNotifications(true);
+    addNotification('Finanças Atualizadas', 'O valor das contribuições dos alunos foi atualizado.', 'finance');
   };
 
-  const clearNotifications = () => setHasNotifications(false);
+  const clearNotifications = () => setNotifications([]);
 
   // Derived Finance Data with useMemo for guaranteed reactivity
   const finance: FinanceData = useMemo(() => ({
@@ -137,7 +158,7 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       notices, addNotice, deleteNotice,
       finance,
       studentContributions, updateStudentContributions,
-      hasNotifications, clearNotifications
+      notifications, clearNotifications
     }}>
       {children}
     </GraduationContext.Provider>
