@@ -20,6 +20,7 @@ interface GraduationContextType {
   deleteProduct: (id: string) => void;
   dailyRecords: DailyRecord[];
   addDailyRecord: (record: Omit<DailyRecord, 'id'>) => void;
+  deleteDailyRecord: (id: string) => void;
   notices: Notice[];
   addNotice: (text: string) => void;
   deleteNotice: (id: string) => void;
@@ -99,6 +100,11 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setHasNotifications(true);
   };
 
+  const deleteDailyRecord = (id: string) => {
+    setDailyRecords(prev => prev.filter(r => r.id !== id));
+    setHasNotifications(true);
+  };
+
   const addNotice = (text: string) => {
     setNotices(prev => [{ id: Math.random().toString(36).substr(2, 9), text, date: new Date().toISOString() }, ...prev]);
     setHasNotifications(true);
@@ -127,7 +133,7 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       user, login, logout,
       events, addEvent, updateEvent, deleteEvent,
       products, addProduct, updateProduct, deleteProduct,
-      dailyRecords, addDailyRecord,
+      dailyRecords, addDailyRecord, deleteDailyRecord,
       notices, addNotice, deleteNotice,
       finance,
       studentContributions, updateStudentContributions,

@@ -6,10 +6,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGraduation } from '../context/GraduationContext';
-import { TrendingUp, Save, CheckCircle2, Calendar, ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react';
+import { TrendingUp, Save, CheckCircle2, Calendar, ArrowUpRight, ArrowDownRight, DollarSign, Trash2 } from 'lucide-react';
 
 export const Store: React.FC = () => {
-  const { user, addDailyRecord, dailyRecords, finance } = useGraduation();
+  const { user, addDailyRecord, dailyRecords, finance, deleteDailyRecord } = useGraduation();
   
   const [dailyExpense, setDailyExpense] = useState('');
   const [dailySales, setDailySales] = useState('');
@@ -197,7 +197,7 @@ export const Store: React.FC = () => {
                 key={record.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 flex items-center justify-between"
+                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${record.expense > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
@@ -214,6 +214,16 @@ export const Store: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {user?.isAdmin && (
+                  <button
+                    onClick={() => deleteDailyRecord(record.id)}
+                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    title="Excluir registro"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </motion.div>
             ))
           )}
