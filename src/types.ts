@@ -5,6 +5,7 @@
 
 export interface User {
   code: string;
+  name: string;
   isAdmin: boolean;
   role: 'admin' | 'student';
 }

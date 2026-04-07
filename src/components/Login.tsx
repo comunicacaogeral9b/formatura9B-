@@ -4,13 +4,14 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useGraduation } from '../context/GraduationContext';
 import { JellyfishIcon } from './JellyfishIcon';
-import { Key, ArrowRight } from 'lucide-react';
+import { Key, ArrowRight, User as UserIcon } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [code, setCode] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const { login } = useGraduation();
 
@@ -20,30 +21,48 @@ export const Login: React.FC = () => {
       setError('Por favor, insira o código de convite');
       return;
     }
+    if (!name) {
+      setError('Por favor, insira seu nome');
+      return;
+    }
     
-    const success = login(code);
+    const success = login(code, name);
     if (!success) {
       setError('Código inválido. Verifique com o representante.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 flex flex-col items-center"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-10 flex flex-col items-center border border-slate-100"
       >
-        <div className="bg-slate-800 p-4 rounded-2xl mb-6">
-          <JellyfishIcon className="w-12 h-12 text-blue-300" />
+        <div className="bg-[#004d4d] p-5 rounded-3xl mb-8 shadow-lg shadow-emerald-900/20">
+          <JellyfishIcon className="w-12 h-12 text-emerald-100" />
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">Formatura 9°B</h1>
-        <p className="text-slate-500 text-center mb-8">Insira o código de convite da turma para acessar.</p>
+        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Portal 9°B</h1>
+        <p className="text-slate-500 text-center mb-10 text-sm leading-relaxed">Identifique-se e insira o código da turma para acessar o portal da formatura.</p>
 
         <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <div className="relative">
-            <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <div className="relative group">
+            <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Seu Nome"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError('');
+              }}
+              className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] py-4 pl-14 pr-5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+          </div>
+
+          <div className="relative group">
+            <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             <input
               type="text"
               placeholder="Código de Convite"
@@ -52,22 +71,31 @@ export const Login: React.FC = () => {
                 setCode(e.target.value);
                 setError('');
               }}
-              className={`w-full bg-slate-50 border ${error ? 'border-red-300' : 'border-slate-100'} rounded-2xl py-4 pl-12 pr-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all uppercase`}
+              className={`w-full bg-slate-50 border ${error.includes('Código') ? 'border-red-300' : 'border-slate-100'} rounded-[1.25rem] py-4 pl-14 pr-5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all uppercase`}
             />
           </div>
-          {error && <p className="text-red-500 text-sm ml-2">{error}</p>}
+
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-red-500 text-xs font-bold ml-2"
+            >
+              {error}
+            </motion.p>
+          )}
 
           <button
             type="submit"
-            className="w-full bg-slate-800 text-white font-semibold py-4 rounded-2xl shadow-lg hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-slate-900 text-white font-bold py-5 rounded-[1.25rem] shadow-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4"
           >
-            Acessar Portal
+            Entrar no Portal
             <ArrowRight className="w-5 h-5" />
           </button>
         </form>
 
-        <div className="mt-8 text-center text-slate-400 text-sm">
-          <p>Dica: O código da turma é único para todos os alunos.</p>
+        <div className="mt-10 text-center">
+          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest">Formatura 2026 • 9° Ano B</p>
         </div>
       </motion.div>
     </div>

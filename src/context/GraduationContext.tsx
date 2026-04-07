@@ -8,7 +8,7 @@ import { User, Event, Product, FinanceData, DailyRecord, Notice } from '../types
 
 interface GraduationContextType {
   user: User | null;
-  login: (code: string) => boolean;
+  login: (code: string, name: string) => boolean;
   logout: () => void;
   events: Event[];
   addEvent: (event: Omit<Event, 'id'>) => void;
@@ -26,6 +26,8 @@ interface GraduationContextType {
   finance: FinanceData;
   studentContributions: number;
   updateStudentContributions: (amount: number) => void;
+  hasNotifications: boolean;
+  clearNotifications: () => void;
 }
 
 const GraduationContext = createContext<GraduationContextType | undefined>(undefined);
@@ -49,14 +51,15 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     { id: '2', text: 'Novos produtos disponíveis na loja da turma!', date: new Date(Date.now() - 86400000).toISOString() },
   ]);
   const [studentContributions, setStudentContributions] = useState<number>(1500.00);
+  const [hasNotifications, setHasNotifications] = useState<boolean>(false);
 
-  const login = (code: string) => {
+  const login = (code: string, name: string) => {
     const normalizedCode = code.toUpperCase().trim();
     if (normalizedCode === ADMIN_CODE) {
-      setUser({ code: normalizedCode, isAdmin: true, role: 'admin' });
+      setUser({ code: normalizedCode, name: name || 'Administrador', isAdmin: true, role: 'admin' });
       return true;
     } else if (normalizedCode === CLASS_CODE) {
-      setUser({ code: normalizedCode, isAdmin: false, role: 'student' });
+      setUser({ code: normalizedCode, name: name || 'Aluno', isAdmin: false, role: 'student' });
       return true;
     }
     return false;
@@ -66,14 +69,17 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const addEvent = (event: Omit<Event, 'id'>) => {
     setEvents(prev => [...prev, { ...event, id: Math.random().toString(36).substr(2, 9) }]);
+    setHasNotifications(true);
   };
 
   const updateEvent = (id: string, updatedEvent: Partial<Event>) => {
     setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updatedEvent } : e));
+    setHasNotifications(true);
   };
 
   const deleteEvent = (id: string) => {
     setEvents(prev => prev.filter(e => e.id !== id));
+    setHasNotifications(true);
   };
 
   const addProduct = (product: Omit<Product, 'id'>) => {
@@ -90,10 +96,12 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const addDailyRecord = (record: Omit<DailyRecord, 'id'>) => {
     setDailyRecords(prev => [...prev, { ...record, id: Math.random().toString(36).substr(2, 9) }]);
+    setHasNotifications(true);
   };
 
   const addNotice = (text: string) => {
     setNotices(prev => [{ id: Math.random().toString(36).substr(2, 9), text, date: new Date().toISOString() }, ...prev]);
+    setHasNotifications(true);
   };
 
   const deleteNotice = (id: string) => {
@@ -102,7 +110,10 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateStudentContributions = (amount: number) => {
     setStudentContributions(amount);
+    setHasNotifications(true);
   };
+
+  const clearNotifications = () => setHasNotifications(false);
 
   // Derived Finance Data with useMemo for guaranteed reactivity
   const finance: FinanceData = useMemo(() => ({
@@ -119,7 +130,8 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       dailyRecords, addDailyRecord,
       notices, addNotice, deleteNotice,
       finance,
-      studentContributions, updateStudentContributions
+      studentContributions, updateStudentContributions,
+      hasNotifications, clearNotifications
     }}>
       {children}
     </GraduationContext.Provider>
