@@ -12,9 +12,10 @@ export const Login: React.FC = () => {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useGraduation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code) {
       setError('Por favor, insira o código de convite');
@@ -25,9 +26,16 @@ export const Login: React.FC = () => {
       return;
     }
     
-    const success = login(code, name);
-    if (!success) {
-      setError('Código inválido. Verifique com o representante.');
+    setIsLoading(true);
+    try {
+      const success = await login(code, name);
+      if (!success) {
+        setError('Código inválido. Verifique com o representante.');
+      }
+    } catch (err) {
+      setError('Erro ao conectar. Tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

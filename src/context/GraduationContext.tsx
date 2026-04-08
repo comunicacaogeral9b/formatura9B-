@@ -5,10 +5,75 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { User, Event, Product, FinanceData, DailyRecord, Notice, Notification } from '../types';
+import { db, auth } from '../firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  setDoc,
+  query,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface GraduationContextType {
   user: User | null;
-  login: (code: string, name: string) => boolean;
+  login: (code: string, name: string) => Promise<boolean>;
   logout: () => void;
   events: Event[];
   addEvent: (event: Omit<Event, 'id'>) => void;
@@ -29,6 +94,7 @@ interface GraduationContextType {
   updateStudentContributions: (amount: number) => void;
   notifications: Notification[];
   clearNotifications: () => void;
+  isAuthReady: boolean;
 }
 
 const GraduationContext = createContext<GraduationContextType | undefined>(undefined);
@@ -37,112 +103,225 @@ const ADMIN_CODE = 'ADM9B';
 const CLASS_CODE = 'TURMA9B';
 
 export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [events, setEvents] = useState<Event[]>([
-    { id: '1', name: 'Festa dos 100 Dias', date: '2026-05-15', time: '19:00', location: 'Salão de Festas Central', status: 'confirmado' },
-    { id: '2', name: 'Churrasco da Turma', date: '2026-07-10', time: '12:00', location: 'Chácara Recanto', status: 'em breve' },
-  ]);
-  const [products, setProducts] = useState<Product[]>([
-    { id: '1', name: 'Camiseta 9°B', price: 45.00, quantity: 50 },
-    { id: '2', name: 'Caneca Personalizada', price: 25.00, quantity: 30 },
-  ]);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('graduation_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
-  const [notices, setNotices] = useState<Notice[]>([
-    { id: '1', text: 'Reunião de pais agendada para o próximo sábado às 14h.', date: new Date().toISOString() },
-    { id: '2', text: 'Novos produtos disponíveis na loja da turma!', date: new Date(Date.now() - 86400000).toISOString() },
-  ]);
-  const [studentContributions, setStudentContributions] = useState<number>(1500.00);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [studentContributions, setStudentContributions] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const addNotification = (title: string, message: string, type: Notification['type']) => {
-    setNotifications(prev => [
-      {
-        id: Math.random().toString(36).substr(2, 9),
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setIsAuthReady(true);
+      } else {
+        setIsAuthReady(false);
+        // If we have a local user but no firebase user, try to sign in anonymously
+        if (user) {
+          signInAnonymously(auth).catch(err => console.error("Auto sign-in failed", err));
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Real-time listeners
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    const unsubEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
+      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'events'));
+
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'products'));
+
+    const unsubRecords = onSnapshot(collection(db, 'dailyRecords'), (snapshot) => {
+      setDailyRecords(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyRecord)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'dailyRecords'));
+
+    const unsubNotices = onSnapshot(query(collection(db, 'notices'), orderBy('date', 'desc')), (snapshot) => {
+      setNotices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notice)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'notices'));
+
+    const unsubConfig = onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        setStudentContributions(snapshot.data().studentContributions || 0);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'config/global'));
+
+    const unsubNotifications = onSnapshot(query(collection(db, 'notifications'), orderBy('date', 'desc'), limit(20)), (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'notifications'));
+
+    return () => {
+      unsubEvents();
+      unsubProducts();
+      unsubRecords();
+      unsubNotices();
+      unsubConfig();
+      unsubNotifications();
+    };
+  }, [isAuthReady]);
+
+  const addNotification = async (title: string, message: string, type: Notification['type']) => {
+    if (!user?.isAdmin) return;
+    try {
+      await addDoc(collection(db, 'notifications'), {
         title,
         message,
         date: new Date().toISOString(),
         type
-      },
-      ...prev
-    ]);
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'notifications');
+    }
   };
 
-  const login = (code: string, name: string) => {
+  const login = async (code: string, name: string) => {
     const normalizedCode = code.toUpperCase().trim();
+    let newUser: User | null = null;
+
     if (normalizedCode === ADMIN_CODE) {
-      setUser({ code: normalizedCode, name: name || 'Administrador', isAdmin: true, role: 'admin' });
-      return true;
+      newUser = { code: normalizedCode, name: name || 'Administrador', isAdmin: true, role: 'admin' };
     } else if (normalizedCode === CLASS_CODE) {
-      setUser({ code: normalizedCode, name: name || 'Aluno', isAdmin: false, role: 'student' });
-      return true;
+      newUser = { code: normalizedCode, name: name || 'Aluno', isAdmin: false, role: 'student' };
+    }
+
+    if (newUser) {
+      try {
+        await signInAnonymously(auth);
+        setUser(newUser);
+        localStorage.setItem('graduation_user', JSON.stringify(newUser));
+        return true;
+      } catch (error) {
+        console.error("Login failed", error);
+        return false;
+      }
     }
     return false;
   };
 
-  const logout = () => setUser(null);
-
-  const addEvent = (event: Omit<Event, 'id'>) => {
-    const newEvent = { ...event, id: Math.random().toString(36).substr(2, 9) };
-    setEvents(prev => [...prev, newEvent]);
-    addNotification('Novo Evento', `O evento "${event.name}" foi adicionado.`, 'event');
+  const logout = () => {
+    auth.signOut();
+    setUser(null);
+    localStorage.removeItem('graduation_user');
   };
 
-  const updateEvent = (id: string, updatedEvent: Partial<Event>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updatedEvent } : e));
-    const event = events.find(e => e.id === id);
-    if (event) {
-      addNotification('Evento Atualizado', `O evento "${event.name}" foi modificado.`, 'event');
+  const addEvent = async (event: Omit<Event, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'events'), event);
+      addNotification('Novo Evento', `O evento "${event.name}" foi adicionado.`, 'event');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'events');
     }
   };
 
-  const deleteEvent = (id: string) => {
-    const event = events.find(e => e.id === id);
-    setEvents(prev => prev.filter(e => e.id !== id));
-    if (event) {
-      addNotification('Evento Removido', `O evento "${event.name}" foi cancelado/removido.`, 'event');
+  const updateEvent = async (id: string, updatedEvent: Partial<Event>) => {
+    try {
+      await updateDoc(doc(db, 'events', id), updatedEvent);
+      const event = events.find(e => e.id === id);
+      if (event) {
+        addNotification('Evento Atualizado', `O evento "${event.name}" foi modificado.`, 'event');
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${id}`);
     }
   };
 
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    setProducts(prev => [...prev, { ...product, id: Math.random().toString(36).substr(2, 9) }]);
-  };
-
-  const updateProduct = (id: string, updatedProduct: Partial<Product>) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updatedProduct } : p));
-  };
-
-  const deleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  };
-
-  const addDailyRecord = (record: Omit<DailyRecord, 'id'>) => {
-    setDailyRecords(prev => [...prev, { ...record, id: Math.random().toString(36).substr(2, 9) }]);
-    if (record.salesAmount > 0) {
-      addNotification('Nova Venda', `Uma nova venda de R$ ${record.salesAmount.toLocaleString('pt-BR')} foi registrada.`, 'finance');
+  const deleteEvent = async (id: string) => {
+    try {
+      const event = events.find(e => e.id === id);
+      await deleteDoc(doc(db, 'events', id));
+      if (event) {
+        addNotification('Evento Removido', `O evento "${event.name}" foi cancelado/removido.`, 'event');
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `events/${id}`);
     }
   };
 
-  const deleteDailyRecord = (id: string) => {
-    setDailyRecords(prev => prev.filter(r => r.id !== id));
+  const addProduct = async (product: Omit<Product, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'products'), product);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'products');
+    }
   };
 
-  const addNotice = (text: string) => {
-    setNotices(prev => [{ id: Math.random().toString(36).substr(2, 9), text, date: new Date().toISOString() }, ...prev]);
-    addNotification('Novo Aviso', text, 'notice');
+  const updateProduct = async (id: string, updatedProduct: Partial<Product>) => {
+    try {
+      await updateDoc(doc(db, 'products', id), updatedProduct);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+    }
   };
 
-  const deleteNotice = (id: string) => {
-    setNotices(prev => prev.filter(n => n.id !== id));
+  const deleteProduct = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'products', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
+    }
   };
 
-  const updateStudentContributions = (amount: number) => {
-    setStudentContributions(amount);
-    addNotification('Finanças Atualizadas', 'O valor das contribuições dos alunos foi atualizado.', 'finance');
+  const addDailyRecord = async (record: Omit<DailyRecord, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'dailyRecords'), record);
+      if (record.salesAmount > 0) {
+        addNotification('Nova Venda', `Uma nova venda de R$ ${record.salesAmount.toLocaleString('pt-BR')} foi registrada.`, 'finance');
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'dailyRecords');
+    }
   };
 
-  const clearNotifications = () => setNotifications([]);
+  const deleteDailyRecord = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'dailyRecords', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `dailyRecords/${id}`);
+    }
+  };
 
-  // Derived Finance Data with useMemo for guaranteed reactivity
+  const addNotice = async (text: string) => {
+    try {
+      await addDoc(collection(db, 'notices'), { text, date: new Date().toISOString() });
+      addNotification('Novo Aviso', text, 'notice');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'notices');
+    }
+  };
+
+  const deleteNotice = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'notices', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `notices/${id}`);
+    }
+  };
+
+  const updateStudentContributions = async (amount: number) => {
+    try {
+      await setDoc(doc(db, 'config', 'global'), { studentContributions: amount }, { merge: true });
+      addNotification('Finanças Atualizadas', 'O valor das contribuições dos alunos foi atualizado.', 'finance');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'config/global');
+    }
+  };
+
+  const clearNotifications = () => {
+    // In a real app, we might want to mark them as read per user
+    // For now, we'll just leave them in Firestore as they are shared
+  };
+
   const finance: FinanceData = useMemo(() => ({
     expenses: dailyRecords.reduce((acc, curr) => acc + curr.expense, 0),
     sales: dailyRecords.reduce((acc, curr) => acc + curr.salesAmount, 0),
@@ -158,7 +337,8 @@ export const GraduationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       notices, addNotice, deleteNotice,
       finance,
       studentContributions, updateStudentContributions,
-      notifications, clearNotifications
+      notifications, clearNotifications,
+      isAuthReady
     }}>
       {children}
     </GraduationContext.Provider>

@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "Event": {
+      "title": "Event",
+      "description": "A graduation related event",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["confirmado", "em breve", "cancelado"] }
+      },
+      "required": ["name", "date", "time", "location", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A product sold by the class",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "quantity": { "type": "number" }
+      },
+      "required": ["name", "price", "quantity"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "An announcement for the class",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "date"]
+    },
+    "DailyRecord": {
+      "title": "DailyRecord",
+      "description": "Financial record of a day",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "expense": { "type": "number" },
+        "salesAmount": { "type": "number" },
+        "observation": { "type": "string" }
+      },
+      "required": ["date", "expense", "salesAmount"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "App notification",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["event", "notice", "finance"] }
+      },
+      "required": ["title", "message", "date", "type"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "Global app configuration",
+      "type": "object",
+      "properties": {
+        "studentContributions": { "type": "number" }
+      },
+      "required": ["studentContributions"]
+    }
+  },
+  "firestore": {
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Collection of graduation events"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of products for sale"
+    },
+    "/notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Collection of announcements"
+    },
+    "/dailyRecords/{recordId}": {
+      "schema": "DailyRecord",
+      "description": "Collection of daily financial records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Collection of notifications"
+    },
+    "/config/global": {
+      "schema": "Config",
+      "description": "Global configuration document"
+    }
+  }
+}

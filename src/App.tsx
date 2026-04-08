@@ -12,6 +12,7 @@ import { Events } from './components/Events';
 import { Store } from './components/Store';
 import { Navbar } from './components/Navbar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   const { user } = useGraduation();
@@ -56,10 +57,12 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <GraduationProvider>
-      <div className="bg-slate-900 min-h-screen flex items-center justify-center font-sans antialiased">
-        <AppContent />
-      </div>
-    </GraduationProvider>
+    <ErrorBoundary>
+      <GraduationProvider>
+        <div className="bg-slate-900 min-h-screen flex items-center justify-center font-sans antialiased">
+          <AppContent />
+        </div>
+      </GraduationProvider>
+    </ErrorBoundary>
   );
 }

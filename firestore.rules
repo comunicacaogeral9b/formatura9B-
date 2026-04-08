@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: events
+    // Fields: name (string), date (string), time (string), location (string), status (string)
+    //
+    // Collection: products
+    // Fields: name (string), price (number), quantity (number)
+    //
+    // Collection: notices
+    // Fields: text (string), date (string)
+    //
+    // Collection: dailyRecords
+    // Fields: date (string), expense (number), salesAmount (number), observation (string, optional)
+    //
+    // Collection: notifications
+    // Fields: title (string), message (string), date (string), type (string)
+    //
+    // Collection: config
+    // Document: global
+    // Fields: studentContributions (number)
+    //
+    // Collection: users
+    // Fields: role (string), name (string), email (string)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (request.auth.token.email == "mayaramonteiro.lisboa@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEvent(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.time is string &&
+             data.location is string &&
+             data.status in ['confirmado', 'em breve', 'cancelado'];
+    }
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.price is number && data.price >= 0 &&
+             data.quantity is number && data.quantity >= 0;
+    }
+
+    function isValidNotice(data) {
+      return data.text is string && data.text.size() > 0 && data.text.size() < 1000 &&
+             data.date is string;
+    }
+
+    function isValidDailyRecord(data) {
+      return data.date is string &&
+             data.expense is number && data.expense >= 0 &&
+             data.salesAmount is number && data.salesAmount >= 0 &&
+             (!('observation' in data) || (data.observation is string && data.observation.size() < 500));
+    }
+
+    function isValidNotification(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.message is string && data.message.size() > 0 &&
+             data.date is string &&
+             data.type in ['event', 'notice', 'finance'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidEvent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidProduct(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /notices/{noticeId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidNotice(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /dailyRecords/{recordId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidDailyRecord(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidNotification(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /config/global {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && request.resource.data.studentContributions is number;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAdmin();
+    }
+  }
+}
